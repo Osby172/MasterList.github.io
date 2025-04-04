@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <title>Motor de Búsqueda</title>
+
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: auto;
+        }
+
+        thead {
+            position: sticky;
+            top: 0;
+            background-color: #9ad5f8;
+            z-index: 1;
+        }
+
+        th, td {
+            padding: 8px;
+            text-align: center;
+            border: 2px solid #ddd;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: normal;
+        }
+
+        tbody {
+            display: block;
+            max-height: 100%;
+            overflow-y: auto;
+            width: 100%;
+        }
+
+        thead, tbody tr {
+            display: table;
+            width: 100%;
+            table-layout: fixed;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+        <a class="btn" href="index.html" style="background-color: rgb(151, 235, 171); color: rgb(0, 0, 0);">Inicio</a>
+
+    </nav>
+    <h2 style="text-align: center;">¿Qué estás buscando?</h2>
+    <input type="text" id="searchInput" placeholder="Buscar..." oninput="searchTable()" style="display: block; margin: 0 auto; width: 500px; text-align: center;">
+    <br>
+
+    <div style="overflow-x: auto;">
+        <table id="dataTable">
+            <thead><tr id="tableHeader"></tr></thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <script>
+        let excelData = []; // Variable para almacenar los datos del Excel
+
+        // Función para cargar el archivo Excel
+        function loadDefaultExcel() {
+            fetch('material enfermeria.xlsx')
+                .then(response => response.arrayBuffer())
+                .then(data => {
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const sheet = workbook.Sheets[sheetName];
+                    excelData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                    displayTable(excelData);
+                })
+                .catch(error => console.error("ERROR:", error.message));
+        }
+
+        // Ejecutar la carga del archivo Excel al cargar la página
+        window.onload = loadDefaultExcel;
+
+        // Función para mostrar los datos del Excel en la tabla
+        function displayTable(data) {
+            const tableHeader = document.getElementById('tableHeader');
+            const tableBody = document.getElementById('tableBody');
+            tableHeader.innerHTML = "";
+            tableBody.innerHTML = "";
+
+            if (data.length === 0) return;
+
+            // Crear encabezados
+            data[0].forEach(header => {
+                const th = document.createElement("th");
+                th.textContent = header;
+                tableHeader.appendChild(th);
+            });
+
+            // Crear filas
+            for (let i = 1; i < data.length; i++) {
+                const row = document.createElement("tr");
+                data[i].forEach(cell => {
+                    const td = document.createElement("td");
+
+                    // Verificar si la celda contiene una ruta de imagen
+                    if (typeof cell === "string" && (cell.endsWith(".jpg") || cell.endsWith(".png") || cell.endsWith(".jpeg") || cell.endsWith(".gif"))) {
+                        const img = document.createElement("img");
+                        img.src = cell;  // Usar la ruta de la celda como fuente de la imagen
+                        img.style.width = "200px";  // Ajustar tamaño
+                        img.style.height = "200px"; // Ajustar tamaño
+                        img.style.objectFit = "cover";
+                        td.appendChild(img);
+                    } else {
+                        td.textContent = cell;  // Si no es imagen, mostrar el texto
+                    }
+
+                    row.appendChild(td);
+                });
+                tableBody.appendChild(row);
+            }
+        }
+
+        // Función para buscar dentro de la tabla
+        function searchTable() {
+            const searchValue = document.getElementById('searchInput').value.toLowerCase(); // Obtiene el texto de búsqueda en minúsculas
+            const rows = document.querySelectorAll("#tableBody tr"); // Obtiene todas las filas de la tabla
+
+            rows.forEach(row => {
+                let cells = row.querySelectorAll("td"); // Obtiene todas las celdas de la fila
+                let match = false;
+
+                // Recorre solo las dos primeras columnas para buscar coincidencias
+                for (let i = 0; i < Math.min(2, cells.length); i++) {
+                    if (cells[i].textContent.toLowerCase().includes(searchValue)) {
+                        match = true;
+                        break;
+                    }
+                }
+
+                // Muestra u oculta la fila según si hay coincidencia
+                row.style.display = match ? "" : "none";
+            });
+        }
+    </script>
+</body>
+</html>

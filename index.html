@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <title>Almacén de Partes</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            background-image: url('/imagenes/opc1.PNG');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+        }
+        .table-container {
+            background-color: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+            max-width: 90%;
+            margin: 20px auto;
+            overflow-x: auto;
+            display: none;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        thead {
+            background-color: #9ad5f8;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        th, td {
+            padding: 8px;
+            text-align: center;
+            border: 2px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="index.html">Almacén de Partes</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Opciones</a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="Busqueda avanzada.html">Búsqueda Avanzada</a></li>
+                            <li><a class="dropdown-item" href="Material cambio.html">Material que requiere cambio</a></li>
+                            <li><a class="dropdown-item" href="Material enfermeria.html">Material con firma de enfermeria</a></li>
+                        </ul>
+                    </li>
+                </ul>
+                <form class="d-flex" role="search" onsubmit="event.preventDefault(); searchTable();">
+                    <input class="form-control me-2" type="search" id="searchInput" placeholder="Ingresa descripción" style="width: 500px; border: 2px solid rgb(253, 161, 3); text-align: center;">
+                    <button class="btn btn-outline-success" type="submit">Buscar</button>
+                </form>
+            </div>
+        </div>
+    </nav>
+
+    <div class="table-container" id="searchResults">
+        <table>
+            <thead>
+                <tr id="tableHeader"></tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <script>
+        let excelData = [];
+        function loadDefaultExcel() {
+            fetch('busqueda avanzada.xlsx')
+                .then(response => response.arrayBuffer())
+                .then(data => {
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const sheet = workbook.Sheets[sheetName];
+                    excelData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                })
+                .catch(error => console.error("ERROR:", error.message));
+        }
+        window.onload = loadDefaultExcel;
+
+        function searchTable() {
+            const searchValue = document.getElementById('searchInput').value.toLowerCase();
+            const resultsContainer = document.getElementById('searchResults');
+            const tableHeader = document.getElementById('tableHeader');
+            const tableBody = document.getElementById('tableBody');
+            tableHeader.innerHTML = "";
+            tableBody.innerHTML = "";
+            if (searchValue === "") {
+                resultsContainer.style.display = "none";
+                return;
+            }
+            resultsContainer.style.display = "block";
+            if (excelData.length === 0) return;
+            excelData[0].forEach(header => {
+                const th = document.createElement("th");
+                th.textContent = header;
+                tableHeader.appendChild(th);
+            });
+            excelData.slice(1).forEach(row => {
+                if (row.some(cell => cell && cell.toString().toLowerCase().includes(searchValue))) {
+                    const tr = document.createElement("tr");
+                    row.forEach(cell => {
+    const td = document.createElement("td");
+
+    // Si el contenido de la celda es una imagen (termina en .jpg, .png, etc.)
+    if (typeof cell === "string" && (cell.endsWith(".jpg") || cell.endsWith(".png") || cell.endsWith(".jpeg") || cell.endsWith(".gif"))) {
+        const img = document.createElement("img");
+        img.src = cell; // Usa la ruta del archivo como fuente de imagen
+        img.style.width = "200px";
+        img.style.height = "200px";
+        img.style.objectFit = "cover";
+        td.appendChild(img);
+    } else {
+        td.textContent = cell; // Si no es imagen, muestra texto normal
+    }
+
+    tr.appendChild(td);
+});
+
+                    tableBody.appendChild(tr);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
