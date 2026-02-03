@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Búsqueda avanzada (Excel en línea - SharePoint)</title>
+  <style>
+    :root { --bg:#0b1220; --card:#121a2b; --text:#e8eefc; --muted:#9bb0d1; --accent:#6aa3ff; --line:#24314f; }
+    *{ box-sizing:border-box; }
+    body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:linear-gradient(180deg,#071023,var(--bg)); color:var(--text); }
+    .wrap{ max-width:1100px; margin:0 auto; padding:24px; }
+    header{ display:flex; gap:14px; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; }
+    h1{ font-size:20px; margin:0; }
+    .hint{ color:var(--muted); font-size:13px; margin-top:6px; line-height:1.4; }
+    .grid{ display:grid; grid-template-columns: 1fr; gap:14px; margin-top:16px; }
+    @media (min-width:900px){ .grid{ grid-template-columns: 360px 1fr; align-items:start; } }
+    .card{ background:rgba(18,26,43,.92); border:1px solid var(--line); border-radius:14px; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
+    label{ display:block; font-size:12px; color:var(--muted); margin:10px 0 6px; }
+    input, select{ width:100%; padding:10px 11px; border-radius:10px; border:1px solid var(--line); background:#0b1429; color:var(--text); outline:none; }
+    input:focus, select:focus{ border-color:var(--accent); box-shadow:0 0 0 3px rgba(106,163,255,.15); }
+    .row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .btns{ display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; }
+    button{ cursor:pointer; border:1px solid var(--line); background:#0b1429; color:var(--text); padding:10px 12px; border-radius:10px; }
+    button.primary{ background:var(--accent); border-color:transparent; color:#031027; font-weight:600; }
+    button:disabled{ opacity:.55; cursor:not-allowed; }
+    .status{ margin-top:10px; font-size:12px; color:var(--muted); }
+    .iframeWrap{ padding:0; overflow:hidden; }
+    iframe{ width:100%; height:76vh; min-height:560px; border:0; display:block; background:#fff; }
+    .small{ font-size:12px; color:var(--muted); }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:11px; color:#cfe0ff; word-break:break-all; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Búsqueda avanzada (Excel en línea embebido desde SharePoint)</h1>
+        <div class="hint">
+          Pega el enlace de <b>Insertar &gt; Integrar</b> (iframe) o un enlace de Excel/SharePoint. Usa los filtros para construir una URL con parámetros.
+          <br/>Nota: Excel en la web admite parámetros como <span class="mono">activeCell</span>. La mayoría de filtros no “filtran la tabla” automáticamente salvo que tu libro esté preparado (Office Scripts / Power Automate / complemento).
+        </div>
+      </div>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <label>URL/Embed base (SharePoint/Excel Web)</label>
+        <input id="baseUrl" placeholder="Pega aquí la URL o el src del iframe" />
+
+        <div class="row">
+          <div>
+            <label>Hoja (sheet)</label>
+            <input id="sheet" placeholder="Ej: Hoja1" />
+          </div>
+          <div>
+            <label>Celda inicial (activeCell)</label>
+            <input id="activeCell" placeholder="Ej: A1" />
+          </div>
+        </div>
+
+        <label>Modo / vista</label>
+        <select id="ui">
+          <option value="" selected>(sin cambio)</option>
+          <option value="true">ui=true (mostrar interfaz)</option>
+          <option value="false">ui=false (mínima)</option>
+        </select>
+
+        <label>Filtros (opcionales, para tu lógica)</label>
+        <div class="row">
+          <div>
+            <label>Texto</label>
+            <input id="q" placeholder="Ej: cliente, proyecto..." />
+          </div>
+          <div>
+            <label>Estado</label>
+            <select id="estado">
+              <option value="" selected>(cualquiera)</option>
+              <option>Abierto</option>
+              <option>Cerrado</option>
+              <option>En curso</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Desde (fecha)</label>
+            <input id="desde" type="date" />
+          </div>
+          <div>
+            <label>Hasta (fecha)</label>
+            <input id="hasta" type="date" />
+          </div>
+        </div>
+
+        <div class="btns">
+          <button class="primary" id="apply">Aplicar / Cargar</button>
+          <button id="reset">Restablecer</button>
+          <button id="copy">Copiar URL final</button>
+        </div>
+
+        <div class="status" id="status">Listo.</div>
+        <div class="small">URL final:</div>
+        <div class="mono" id="finalUrl"></div>
+      </div>
+
+      <div class="card iframeWrap">
+        <iframe id="frame" title="Excel Online"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Util: extrae src si el usuario pegó un iframe completo
+    function extractSrc(value){
+      const v = (value || '').trim();
+      if (!v) return '';
+      const m = v.match(/src\s*=\s*"([^"]+)"/i);
+      return m ? m[1] : v;
+    }
+
+    // Construye URL con parámetros compatibles y otros de “búsqueda” (para tu lógica)
+    function buildUrl(){
+      const base = extractSrc(document.getElementById('baseUrl').value);
+      if (!base) throw new Error('Falta la URL base.');
+
+      const u = new URL(base, window.location.href);
+
+      // Parámetros típicos de Excel Web (pueden variar según el enlace)
+      const sheet = document.getElementById('sheet').value.trim();
+      const activeCell = document.getElementById('activeCell').value.trim();
+      const ui = document.getElementById('ui').value;
+
+      if (sheet) u.searchParams.set('sheet', sheet);
+      if (activeCell) u.searchParams.set('activeCell', activeCell);
+      if (ui !== '') u.searchParams.set('ui', ui);
+
+      // Parámetros de “búsqueda avanzada” (no los interpreta Excel por sí solo)
+      // Útiles si tienes una página intermedia, Office Script, Power Automate, etc.
+      const q = document.getElementById('q').value.trim();
+      const estado = document.getElementById('estado').value.trim();
+      const desde = document.getElementById('desde').value;
+      const hasta = document.getElementById('hasta').value;
+
+      if (q) u.searchParams.set('q', q);
+      if (estado) u.searchParams.set('estado', estado);
+      if (desde) u.searchParams.set('desde', desde);
+      if (hasta) u.searchParams.set('hasta', hasta);
+
+      return u.toString();
+    }
+
+    function setStatus(msg){
+      document.getElementById('status').textContent = msg;
+    }
+
+    function apply(){
+      try{
+        const url = buildUrl();
+        document.getElementById('finalUrl').textContent = url;
+        document.getElementById('frame').src = url;
+        setStatus('Cargado. Si no ves el libro, revisa permisos y que el enlace permita incrustación.');
+      }catch(e){
+        setStatus('Error: ' + e.message);
+      }
+    }
+
+    document.getElementById('apply').addEventListener('click', apply);
+    document.getElementById('reset').addEventListener('click', () => {
+      for (const id of ['baseUrl','sheet','activeCell','q','desde','hasta']) document.getElementById(id).value = '';
+      document.getElementById('estado').value = '';
+      document.getElementById('ui').value = '';
+      document.getElementById('frame').src = '';
+      document.getElementById('finalUrl').textContent = '';
+      setStatus('Restablecido.');
+    });
+
+    document.getElementById('copy').addEventListener('click', async () => {
+      const text = document.getElementById('finalUrl').textContent.trim();
+      if (!text) return setStatus('Nada que copiar (primero aplica/carga).');
+      try{
+        await navigator.clipboard.writeText(text);
+        setStatus('URL copiada al portapapeles.');
+      }catch{
+        setStatus('No se pudo copiar (tu navegador puede bloquearlo).');
+      }
+    });
+
+    // Opcional: si llega una URL en la query (?src=...)
+    (function initFromQuery(){
+      const p = new URLSearchParams(location.search);
+      const src = p.get('src');
+      if (src){
+        document.getElementById('baseUrl').value = src;
+        apply();
+      }
+    })();
+  </script>
+</body>
+</html>
