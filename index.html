@@ -303,7 +303,7 @@
         let excelDataIndex = [];
 
         function loadExcelIndex() {
-            fetch('Busqueda avanzada.xlsx')
+            fetch('https://docs.google.com/spreadsheets/d/18uMNnsWhB3LAKtgdsMGBN12T0r36K64h/edit?gid=232848370#gid=232848370')
                 .then(response => response.arrayBuffer())
                 .then(data => {
                     const workbook = XLSX.read(data, { type: 'array' });
@@ -373,7 +373,7 @@
         let excelDataAvanzada = [];
 
         function loadExcelAvanzada() {
-            fetch('busqueda avanzada.xlsx')
+            fetch('https://docs.google.com/spreadsheets/d/18uMNnsWhB3LAKtgdsMGBN12T0r36K64h/edit?gid=232848370#gid=232848370')
                 .then(response => response.arrayBuffer())
                 .then(data => {
                     const workbook = XLSX.read(data, { type: 'array' });
@@ -539,6 +539,7 @@
     </script>
 </body>
 </html>
+
 
 
 
